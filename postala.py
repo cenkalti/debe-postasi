@@ -2,39 +2,24 @@ from datetime import datetime, timedelta
 
 import requests
 
-import config
+import app
 import debe
 
-content = debe.generate_html().encode("utf-8")
-# print(content)
+yesterday = (datetime.utcnow() - timedelta(days=1)).isoformat()[:10]
+key = "debe-%s" % yesterday
+content = app.mc.get(key)
+if not content:
+    print("no content")
+    content = debe.generate_html().encode("utf-8")
+    app.mc.set(key, content, time=24*60*60)
 
-today = datetime.utcnow()
-yesterday = today - timedelta(days=1)
-# response = requests.post("http://httpbin.org/post", data={
-response = requests.post(config.SENDLOOP_BASE_URL + "/Campaign.Create/json", data={
-    "APIKey": config.SENDLOOP_API_KEY,
-    "CampaignName": "debe-" + today.isoformat()[:10],
-    "FromName": "debe postası",
-    "FromEmail": "debe.postasi@gmail.com",
-    "ReplyToName": "debe postası",
-    "ReplyToEmail": "debe.postasi@gmail.com",
-    "TargetListIDs[0]": config.SENDLOOP_LIST_ID,
-    "Subject": "debe (%s)" % yesterday.isoformat()[:10],
-    "HTMLContent": content,
+url = "https://api.mailgun.net/v2/%s/messages" % app.MAILGUN_DOMAIN
+auth = ("api", app.MAILGUN_API_KEY)
+response = requests.post(url, auth=auth, data={
+    "from": "debe postasi <debe.postasi@gmail.com>",
+    "to": app.MAILGUN_MAILING_LIST,
+    "subject": "debe (%s)" % yesterday,
+    "html": content,
 })
-# print(response.text)
-# import sys; sys.exit(0)
 
-assert response.status_code == 200
-json = response.json()
-assert json["Success"], json["ErrorMessage"]
-campaign_id = json["CampaignID"]
-
-response = requests.post(config.SENDLOOP_BASE_URL + "/Campaign.Send/json", data={
-    "APIKey": config.SENDLOOP_API_KEY,
-    "CampaignID": campaign_id,
-    "SendDate": "NOW",
-})
-assert response.status_code == 200
-json = response.json()
-assert json["Success"], json["ErrorMessage"]
+assert response.status_code == 200, response.text

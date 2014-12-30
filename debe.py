@@ -48,9 +48,7 @@ def generate_html():
 
     return "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"></head>" \
            "<body><h1>dünün en beğenilen entry'leri</h1>" + \
-           ol.encode().decode() + \
-           "<hr><a href=\"%Link:Unsubscribe%\">bu e-postaları artık almak " \
-           "istemiyorsaniz tıklayın</a></body></html>"
+           ol.encode().decode() + "<hr></body></html>"
 
 
 if __name__ == "__main__":

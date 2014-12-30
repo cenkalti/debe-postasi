@@ -1,7 +1,28 @@
-import requests
-from flask import Flask, request
+import os
 
-import config
+import pylibmc
+import requests
+from flask import Flask, request, abort
+
+MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY")
+assert MAILGUN_API_KEY
+
+MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN")
+assert MAILGUN_DOMAIN
+
+MAILGUN_MAILING_LIST = os.getenv("MAILGUN_MAILING_LIST")
+assert MAILGUN_MAILING_LIST
+
+SECRET = os.getenv("SECRET")
+assert SECRET
+
+mc = pylibmc.Client(os.getenv('MEMCACHEDCLOUD_SERVERS', '').split(','),
+                    binary=True,
+                    username=os.getenv('MEMCACHEDCLOUD_USERNAME'),
+                    password=os.getenv('MEMCACHEDCLOUD_PASSWORD'),
+                    behaviors={"tcp_nodelay": True,
+                               "ketama": True,
+                               "no_block": True})
 
 app = Flask(__name__, static_folder="")
 
@@ -13,23 +34,33 @@ def index():
 
 @app.route("/kayit", methods=["POST"])
 def kayit():
-    response = requests.post(config.SENDLOOP_BASE_URL + "/Subscriber.Subscribe/json", data={
-        "APIKey": config.SENDLOOP_API_KEY,
-        "EmailAddress": request.form["email"],
-        "ListID": config.SENDLOOP_LIST_ID,
-        "SubscriptionIP": request.remote_addr,
+    url = "https://api.mailgun.net/v2/lists/%s/members" % MAILGUN_MAILING_LIST
+    auth = ("api", MAILGUN_API_KEY)
+    response = requests.post(url, auth=auth, data={
+        "subscribed": "True",
+        "address": request.form["email"],
     })
-    assert response.status_code == 200
+    if response.status_code == 200:
+        return "tamamdır."
+    elif response.status_code == 400:
+        return response.text
+    else:
+        raise Exception(response.text)
 
-    data = response.json()
-    if not data["Success"]:
-        if data["ErrorCode"] == 125:
-            return "zaten kayitlisiniz."
-        raise Exception("Unhandled error code", data["ErrorCode"], data["ErrorMessage"])
 
-    assert data["SubscriptionStatus"] == "Confirmation Pending"
-    return "e-posta adresinize bir onay postasi gelecek, " \
-           "oradaki linke tiklayin. (gelmediyse spam'a dusmus olabilir)"
+@app.route("/cache/view")
+def cache_view():
+    if request.args["secret"] != SECRET:
+        abort(403)
+    return mc.get("debe") or "no debe in cache"
+
+
+@app.route("/cache/clear")
+def cache_clear():
+    if request.args["secret"] != SECRET:
+        abort(403)
+    mc.delete("debe")
+    return "cleared"
 
 
 if __name__ == "__main__":

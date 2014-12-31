@@ -9,7 +9,6 @@ yesterday = (datetime.utcnow() - timedelta(days=1)).isoformat()[:10]
 key = "debe-%s" % yesterday
 content = app.mc.get(key)
 if not content:
-    print("no content")
     content = debe.generate_html().encode("utf-8")
     app.mc.set(key, content, time=24*60*60)
 

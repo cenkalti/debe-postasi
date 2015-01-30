@@ -44,6 +44,7 @@ def generate_html():
         author_a = soup_entry.new_tag("a", href=author_href)
         author_a.string = author.string
         author_p = soup_entry.new_tag("p")
+        author_p.string = "yazar: "
         author_p.append(author_a)
         li.append(author_p)
 

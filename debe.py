@@ -5,7 +5,7 @@ Run with following command: PYTHONIOENCODING=utf-8 python3 debe.py > debe.html
 """
 import asyncio
 
-import requests
+from requests_futures.sessions import FuturesSession
 from bs4 import BeautifulSoup
 
 URL_BASE = "https://eksisozluk.com"
@@ -13,7 +13,8 @@ PATH_DEBE = "/debe"
 
 
 def generate_html():
-    resp_debe = requests.get(URL_BASE + PATH_DEBE)
+    session = FuturesSession(max_workers=10)
+    resp_debe = session.get(URL_BASE + PATH_DEBE).result()
     soup_debe = BeautifulSoup(resp_debe.text)
 
     ol = soup_debe.find(id="content-body").find("ol")
@@ -25,7 +26,7 @@ def generate_html():
                 a["href"] = URL_BASE + a["href"]
 
         a = li.find("a")
-        resp_entry = requests.get(a["href"])
+        resp_entry = session.get(a["href"]).result()
         soup_entry = BeautifulSoup(resp_entry.text)
         content = soup_entry\
             .find("ol", id="entry-list")\

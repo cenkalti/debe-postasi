@@ -1,4 +1,6 @@
 import os
+import json
+from datetime import datetime
 
 import pylibmc
 import requests
@@ -39,6 +41,7 @@ def kayit():
     response = requests.post(url, auth=auth, data={
         "subscribed": "True",
         "address": request.form["email"],
+        "vars": json.dumps({"date": datetime.utcnow().isoformat()[:19]}),
     })
     if response.status_code == 200:
         return "tamamdır."

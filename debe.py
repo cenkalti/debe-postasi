@@ -30,9 +30,7 @@ def generate_html():
         resp_entry = f.result()
         soup_entry = BeautifulSoup(resp_entry.text)
         content = soup_entry\
-            .find("ol", id="entry-list")\
-            .find("li")\
-            .find("article")\
+            .find(id="entry-list")\
             .find("div", class_="content")
         add_base_url(content)
         content.name = "p"

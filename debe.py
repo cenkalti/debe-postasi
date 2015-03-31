@@ -29,11 +29,18 @@ def generate_html():
     for li, f in futures:
         resp_entry = f.result()
         soup_entry = BeautifulSoup(resp_entry.text)
-        content = soup_entry\
-            .find(id="entry-list")\
-            .find("div", class_="content")
-        add_base_url(content)
-        content.name = "p"
+        content_body = soup_entry.find(id="content-body")
+        topic = content_body.find(id="topic")
+        not_found = topic.attrs.get("data-not-found") == "true"
+        if not_found:
+            content = topic.find("p")
+        else:
+            content = soup_entry\
+                .find(id="entry-list")\
+                .find("div", class_="content")
+            add_base_url(content)
+            content.name = "p"
+
         li.append(content)
 
         # move author below the entry

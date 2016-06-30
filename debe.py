@@ -10,11 +10,15 @@ URL_BASE = "https://eksisozluk.com"
 PATH_DEBE = "/debe"
 MAX_WORKERS = 10
 
+headers = {
+    'User-Agent': 'curl/7.43.0',
+}
+
 
 def generate_html():
     session = FuturesSession(max_workers=MAX_WORKERS)
-    resp_debe = session.get(URL_BASE + PATH_DEBE).result()
-    soup_debe = BeautifulSoup(resp_debe.text)
+    resp_debe = session.get(URL_BASE + PATH_DEBE, headers=headers).result()
+    soup_debe = BeautifulSoup(resp_debe.text, "html.parser")
     ol = soup_debe.find(id="content-body").find("ol")
     add_base_url(ol)
 
@@ -22,13 +26,13 @@ def generate_html():
     futures = []
     for li in ol.find_all("li"):
         a = li.find("a")
-        f = session.get(a["href"])
+        f = session.get(a["href"], headers=headers)
         futures.append((li, f))
 
     # inject into the list
     for li, f in futures:
         resp_entry = f.result()
-        soup_entry = BeautifulSoup(resp_entry.text)
+        soup_entry = BeautifulSoup(resp_entry.text, "html.parser")
         content_body = soup_entry.find(id="content-body")
         topic = content_body.find(id="topic")
         not_found = topic.attrs.get("data-not-found") == "true"

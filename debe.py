@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 URL_BASE = "https://eksisozluk.com"
 PATH_DEBE = "/debe"
-MAX_WORKERS = 6
+MAX_WORKERS = 1
 
 headers = {
     'User-Agent': 'curl/7.43.0',

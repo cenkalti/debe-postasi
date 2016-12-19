@@ -3,35 +3,37 @@
 Run with following command: PYTHONIOENCODING=utf-8 python3 debe.py > debe.html
 
 """
-from requests_futures.sessions import FuturesSession
+import requests
+import backoff
 from bs4 import BeautifulSoup
 
 URL_BASE = "https://eksisozluk.com"
 PATH_DEBE = "/debe"
-MAX_WORKERS = 1
+RETRY_COUNT = 8
 
 headers = {
     'User-Agent': 'curl/7.43.0',
 }
 
+session = requests.Session()
+
+
+@backoff.on_exception(backoff.expo,
+                      requests.exceptions.RequestException,
+                      max_tries=RETRY_COUNT)
+def get_url(url):
+    return session.get(url, headers=headers)
+
 
 def generate_html():
-    session = FuturesSession(max_workers=MAX_WORKERS)
-    resp_debe = session.get(URL_BASE + PATH_DEBE, headers=headers).result()
+    resp_debe = get_url(URL_BASE + PATH_DEBE)
     soup_debe = BeautifulSoup(resp_debe.text, "html.parser")
     ol = soup_debe.find(id="content-body").find("ol")
     add_base_url(ol)
 
-    # fetch enries in parallel
-    futures = []
     for li in ol.find_all("li"):
         a = li.find("a")
-        f = session.get(a["href"], headers=headers)
-        futures.append((li, f))
-
-    # inject into the list
-    for li, f in futures:
-        resp_entry = f.result()
+        resp_entry = get_url(a["href"])
         soup_entry = BeautifulSoup(resp_entry.text, "html.parser")
         content_body = soup_entry.find(id="content-body")
         topic = content_body.find(id="topic")

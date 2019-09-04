@@ -3,7 +3,10 @@
 Run with following command: PYTHONIOENCODING=utf-8 python3 debe.py > debe.html
 
 """
-import requests
+from io import StringIO
+
+from requests import Session
+from requests.exceptions import RequestException
 import backoff
 from bs4 import BeautifulSoup
 
@@ -15,53 +18,100 @@ headers = {
     'User-Agent': 'curl/7.43.0',
 }
 
-session = requests.Session()
+session = Session()
+
+
+class ParseError(Exception):
+    pass
 
 
 @backoff.on_exception(backoff.expo,
-                      requests.exceptions.RequestException,
+                      RequestException,
                       max_tries=RETRY_COUNT)
 def get_url(url):
-    return session.get(url, headers=headers)
+    return session.get(URL_BASE + url, headers=headers)
 
 
 def generate_html():
-    resp_debe = get_url(URL_BASE + PATH_DEBE)
-    soup_debe = BeautifulSoup(resp_debe.text, "html.parser")
-    ol = soup_debe.find(id="content-body").find("ol")
-    add_base_url(ol)
+    s = StringIO()
+    s.write(
+        '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"></head>\n'
+        "<body><h1>dünün en beğenilen entry'leri</h1>\n")
 
+    titles = get_titles()
+    for i, title in enumerate(titles, 1):
+        content = get_content(title)
+        s.write('<h2 style="text-transform: uppercase">')
+        s.write(str(i))
+        s.write('. <a href="')
+        s.write(URL_BASE)
+        s.write(title['href'])
+        s.write('">')
+        s.write(title['title'])
+        s.write('</a></h2>\n')
+        s.write(content['content'])
+        s.write('\n')
+        if not content['not_found']:
+            s.write('<p>yazar: <a href="')
+            s.write(URL_BASE)
+            s.write(content['author_href'])
+            s.write('">')
+            s.write(content['author'])
+            s.write('</a> tarih: ')
+            s.write(content['date'])
+            s.write('</p>\n')
+
+    s.write("</body></html>")
+    return s.getvalue()
+
+
+def get_titles():
+    resp = get_url(PATH_DEBE)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    ret = []
+    ol = soup.find(id="content-body").find("ul")
     for li in ol.find_all("li"):
         a = li.find("a")
-        resp_entry = get_url(a["href"])
-        soup_entry = BeautifulSoup(resp_entry.text, "html.parser")
-        content_body = soup_entry.find(id="content-body")
-        topic = content_body.find(id="topic")
-        not_found = topic.attrs.get("data-not-found") == "true"
-        if not_found:
-            content = topic.find("p")
-        else:
-            content = soup_entry\
-                .find(id="entry-list")\
-                .find("div", class_="content")
-            add_base_url(content)
-            content.name = "p"
+        href = a["href"]
+        title = a.find("span", class_="caption").string
+        ret.append({"title": title, "href": href})
 
-        li.append(content)
+    return ret
 
-        # move author below the entry
-        author = li.find("a").find("div", class_="detail").extract()
-        author_href = "%s/biri/%s" % (URL_BASE, author.string)
-        author_a = soup_entry.new_tag("a", href=author_href)
-        author_a.string = author.string
-        author_p = soup_entry.new_tag("p")
-        author_p.string = "yazar: "
-        author_p.append(author_a)
-        li.append(author_p)
 
-    return "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"></head>" \
-           "<body><h1>dünün en beğenilen entry'leri</h1>" + \
-           ol.encode().decode() + "<hr></body></html>"
+def get_content(title):
+    author = None
+    author_href = None
+    date = None
+    not_found = True
+    resp = get_url(title["href"])
+    # resp = get_url("/entry/948321421")
+    soup = BeautifulSoup(resp.text, "html.parser")
+    if resp.status_code == 404:
+        topic = soup.find(id="topic")
+        content = topic.find("p")
+    elif resp.status_code == 200:
+        ul = soup.find("ul", id="entry-item-list")
+        li = ul.find("li")
+        content = li.find("div", class_="content")
+        add_base_url(content)
+        content.name = "p"
+        entry_author = ul.find(class_="entry-author")
+        author = entry_author.string
+        author_href = entry_author['href']
+        date = ul.find(class_="entry-date").string
+        not_found = False
+    else:
+        raise ParseError
+
+    return {
+            "not_found": not_found,
+            "content": str(content),
+            "author": author,
+            "author_href": author_href,
+            "date": date,
+    }
 
 
 def add_base_url(elem):

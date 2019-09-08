@@ -101,11 +101,11 @@ def postala():
         content = debe.generate_html().encode("utf-8")
         mc.set(key, content, time=24*60*60)
 
-    url = "https://api.mailgun.net/v2/%s/messages" % app.MAILGUN_DOMAIN
-    auth = ("api", app.MAILGUN_API_KEY)
+    url = "https://api.mailgun.net/v2/%s/messages" % MAILGUN_DOMAIN
+    auth = ("api", MAILGUN_API_KEY)
     response = requests.post(url, auth=auth, data={
         "from": "debe postasi <debe.postasi@gmail.com>",
-        "to": app.MAILGUN_MAILING_LIST,
+        "to": MAILGUN_MAILING_LIST,
         "subject": key,
         "html": content,
     })

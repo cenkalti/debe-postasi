@@ -63,7 +63,7 @@ def cache_generate():
         abort(403)
 
     content = debe.generate_html()
-    app.mc.set(get_subject(), content.encode(), time=24*60*60)
+    mc.set(get_subject(), content.encode(), time=24*60*60)
     return content
 
 

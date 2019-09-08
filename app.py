@@ -8,17 +8,24 @@ from flask import Flask, request, abort
 
 import debe
 
+is_prod = bool(os.getenv("DYNO"))
+
 MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY")
-assert MAILGUN_API_KEY
+if is_prod:
+    assert MAILGUN_API_KEY
 
 MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN")
-assert MAILGUN_DOMAIN
+if is_prod:
+    assert MAILGUN_DOMAIN
 
 MAILGUN_MAILING_LIST = os.getenv("MAILGUN_MAILING_LIST")
-assert MAILGUN_MAILING_LIST
+if is_prod:
+    assert MAILGUN_MAILING_LIST
 
 SECRET = os.getenv("SECRET")
-assert SECRET
+if is_prod:
+    assert SECRET
+
 
 mc = pylibmc.Client(os.getenv('MEMCACHEDCLOUD_SERVERS', '').split(','),
                     binary=True,
@@ -59,7 +66,7 @@ def cache_generate():
         abort(403)
 
     content = debe.generate_html()
-    app.mc.set(get_key(), content.encode(), time=24*60*60)
+    app.mc.set(get_subject(), content.encode(), time=24*60*60)
     return content
 
 
@@ -68,7 +75,7 @@ def cache_view():
     if request.args["secret"] != SECRET:
         abort(403)
 
-    content = mc.get(get_key())
+    content = mc.get(get_subject())
     if not content:
         abort(404)
 
@@ -80,13 +87,33 @@ def cache_clear():
     if request.args["secret"] != SECRET:
         abort(403)
 
-    mc.delete(get_key())
+    mc.delete(get_subject())
     return "cleared"
 
 
-def get_key():
+def get_subject():
     yesterday = (datetime.utcnow() - timedelta(days=1)).isoformat()[:10]
-    return "debe-%s" % yesterday
+    return "debe (%s)" % yesterday
+
+
+@app.cli.command()
+def postala():
+    key = get_subject()
+    content = mc.get(key)
+    if not content:
+        content = debe.generate_html().encode("utf-8")
+        mc.set(key, content, time=24*60*60)
+
+    url = "https://api.mailgun.net/v2/%s/messages" % app.MAILGUN_DOMAIN
+    auth = ("api", app.MAILGUN_API_KEY)
+    response = requests.post(url, auth=auth, data={
+        "from": "debe postasi <debe.postasi@gmail.com>",
+        "to": app.MAILGUN_MAILING_LIST,
+        "subject": key,
+        "html": content,
+    })
+
+    assert response.status_code == 200, response.text
 
 
 if __name__ == "__main__":

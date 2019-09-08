@@ -9,7 +9,11 @@ idna==2.8
 itsdangerous==1.1.0
 Jinja2==2.10.1
 MarkupSafe==1.1.1
+python-binary-memcached==0.28.0
 requests==2.22.0
+six==1.12.0
 soupsieve==1.9.3
+typing==3.7.4.1
+uhashring==1.1
 urllib3==1.25.3
 Werkzeug==0.15.6

@@ -1,10 +1,12 @@
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pylibmc
 import requests
 from flask import Flask, request, abort
+
+import debe
 
 MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY")
 assert MAILGUN_API_KEY
@@ -51,19 +53,40 @@ def kayit():
         raise Exception(response.text)
 
 
+@app.route("/cache/generate")
+def cache_generate():
+    if request.args["secret"] != SECRET:
+        abort(403)
+
+    content = debe.generate_html()
+    app.mc.set(get_key(), content.encode(), time=24*60*60)
+    return content
+
+
 @app.route("/cache/view")
 def cache_view():
     if request.args["secret"] != SECRET:
         abort(403)
-    return mc.get("debe") or "no debe in cache"
+
+    content = mc.get(get_key())
+    if not content:
+        abort(404)
+
+    return content.decode()
 
 
 @app.route("/cache/clear")
 def cache_clear():
     if request.args["secret"] != SECRET:
         abort(403)
-    mc.delete("debe")
+
+    mc.delete(get_key())
     return "cleared"
+
+
+def get_key():
+    yesterday = (datetime.utcnow() - timedelta(days=1)).isoformat()[:10]
+    return "debe-%s" % yesterday
 
 
 if __name__ == "__main__":

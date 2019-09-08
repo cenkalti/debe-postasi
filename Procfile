@@ -1,1 +1,1 @@
-web: gunicorn app:app --worker-class gaiohttp --log-file -
+web: gunicorn app:app --log-file -

@@ -2,7 +2,7 @@ import os
 import json
 from datetime import datetime, timedelta
 
-import pylibmc
+import bmemcached
 import requests
 from flask import Flask, request, abort
 
@@ -27,13 +27,10 @@ if is_prod:
     assert SECRET
 
 
-mc = pylibmc.Client(os.getenv('MEMCACHEDCLOUD_SERVERS', '').split(','),
-                    binary=True,
-                    username=os.getenv('MEMCACHEDCLOUD_USERNAME'),
-                    password=os.getenv('MEMCACHEDCLOUD_PASSWORD'),
-                    behaviors={"tcp_nodelay": True,
-                               "ketama": True,
-                               "no_block": True})
+mc = bmemcached.Client(
+        os.environ.get('MEMCACHEDCLOUD_SERVERS', '').split(','),
+        os.environ.get('MEMCACHEDCLOUD_USERNAME'),
+        os.environ.get('MEMCACHEDCLOUD_PASSWORD'))
 
 app = Flask(__name__, static_folder="")
 

@@ -3,6 +3,7 @@
 Run with following command: PYTHONIOENCODING=utf-8 python3 debe.py > debe.html
 
 """
+import os
 from io import StringIO
 
 from requests import Session
@@ -18,6 +19,11 @@ headers = {
     'User-Agent': 'curl/7.43.0',
 }
 
+proxies = {}
+proxy = os.getenv('PROXY')
+if proxy:
+    proxies['https'] = proxy
+
 session = Session()
 
 
@@ -29,7 +35,7 @@ class ParseError(Exception):
                       RequestException,
                       max_tries=RETRY_COUNT)
 def get_url(url):
-    return session.get(URL_BASE + url, headers=headers)
+    return session.get(URL_BASE + url, headers=headers, proxies=proxies)
 
 
 def generate_html():

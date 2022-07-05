@@ -76,7 +76,7 @@ def get_titles():
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
     ret = []
-    ol = soup.find(id="content-body").find("ul")
+    ol = soup.find("nav", id="partial-index").find("ul", class_="topic-list")
     for li in ol.find_all("li"):
         a = li.find("a")
         href = a["href"]

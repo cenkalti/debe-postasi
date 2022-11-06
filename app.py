@@ -4,9 +4,25 @@ from datetime import datetime, timedelta
 
 import bmemcached
 import requests
+import boto3
 from flask import Flask, request, abort
 
 import debe
+
+
+def populate_environ_from_ssm():
+    ssm_param_path = os.getenv('AWS_SYSTEMS_MANAGER_PARAM_STORE_PATH')
+    if not ssm_param_path:
+        return
+    client = boto3.client('ssm')
+    response = client.get_parameters_by_path(Path=ssm_param_path, WithDecryption=True)
+    for param in response['Parameters']:
+        env_name = os.path.basename(param['Name'])
+        os.environ[env_name] = param['Value']
+
+
+populate_environ_from_ssm()
+
 
 is_prod = bool(os.getenv("DYNO"))
 
@@ -93,7 +109,6 @@ def get_subject():
     return "debe (%s)" % yesterday
 
 
-@app.cli.command()
 def postala():
     key = get_subject()
     content = mc.get(key)

@@ -1,0 +1,28 @@
+{
+    "production": {
+        "app_function": "app.app",
+        "aws_region": "us-east-1",
+        "profile_name": "default",
+        "project_name": "debe-postasi",
+        "runtime": "python3.9",
+        "s3_bucket": "zappa-x01w7cnk0",
+        "certificate_arn": "arn:aws:acm:us-east-1:821523470585:certificate/a66fb706-6774-420a-8b48-c731941c0292",
+        "domain": "debe.cenkalti.com",
+        "route53_enabled": false,
+        "log_level": "INFO",
+        "aws_environment_variables": {
+            "AWS_SYSTEMS_MANAGER_PARAM_STORE_PATH": "/debe-postasi/production"
+        },
+        "extra_permissions": [{
+            "Effect": "Allow",
+            "Action": ["ssm:GetParametersByPath"],
+            "Resource": "arn:aws:ssm:us-east-1:821523470585:parameter/debe-postasi/*"
+        }],
+        "events": [
+            {
+                "function": "app.postala",
+                "expression": "cron(0 5 * * ? *)"
+            }
+        ]
+    }
+}

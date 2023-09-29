@@ -23,25 +23,10 @@ def populate_environ_from_ssm():
 
 populate_environ_from_ssm()
 
-
-is_prod = bool(os.getenv("DYNO"))
-
 MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY")
-if is_prod:
-    assert MAILGUN_API_KEY
-
 MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN")
-if is_prod:
-    assert MAILGUN_DOMAIN
-
 MAILGUN_MAILING_LIST = os.getenv("MAILGUN_MAILING_LIST")
-if is_prod:
-    assert MAILGUN_MAILING_LIST
-
 SECRET = os.getenv("SECRET")
-if is_prod:
-    assert SECRET
-
 
 mc = bmemcached.Client(
         os.environ.get('MEMCACHEDCLOUD_SERVERS', '').split(','),

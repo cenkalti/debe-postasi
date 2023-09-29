@@ -6,6 +6,7 @@ Run with following command: PYTHONIOENCODING=utf-8 python3 debe.py > debe.html
 import os
 from io import StringIO
 
+import openai
 from requests import Session
 from requests.exceptions import RequestException
 import backoff
@@ -54,7 +55,7 @@ def generate_html():
         s.write(title['href'])
         s.write('">')
         s.write(title['title'])
-        s.write('</a></h2>\n')
+        s.write(f'</a> ({content["topic"]})</h2>\n')
         s.write(content['content'])
         s.write('\n')
         if not content['not_found']:
@@ -90,13 +91,12 @@ def get_content(title):
     author = None
     author_href = None
     date = None
+    topic = None
     not_found = True
     resp = get_url(title["href"])
-    # resp = get_url("/entry/948321421")
     soup = BeautifulSoup(resp.text, "html.parser")
     if resp.status_code == 404:
-        topic = soup.find(id="topic")
-        content = topic.find("p")
+        content = soup.find(id="topic").find("p")
     elif resp.status_code == 200:
         ul = soup.find("ul", id="entry-item-list")
         li = ul.find("li")
@@ -107,6 +107,8 @@ def get_content(title):
         author = entry_author.string
         author_href = entry_author['href']
         date = ul.find(class_="entry-date").string
+        topic = gpt_topic(str(content))
+        content = gpt_summarize(str(content))
         not_found = False
     else:
         raise ParseError
@@ -114,10 +116,41 @@ def get_content(title):
     return {
             "not_found": not_found,
             "content": str(content),
+            "topic": topic,
             "author": author,
             "author_href": author_href,
             "date": date,
     }
+
+
+def gpt_topic(content: str) -> str:
+    prompt = "User is going to provide a text in Turkish. Extract topic from given text as a single word in Turkish."
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": content},
+        ]
+    )
+    return response['choices'][0]['message']['content']
+
+
+def gpt_summarize(content: str) -> str:
+    words = len(content.split())
+    if words < 300:
+        return content
+
+    prompt = "User is going to provide a text in Turkish. Summarize given text as 15 sentences in Turkish."
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": content},
+        ]
+    )
+    return "ÖZET<br><br>" + response['choices'][0]['message']['content']
 
 
 def add_base_url(elem):

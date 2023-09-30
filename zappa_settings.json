@@ -5,6 +5,7 @@
         "profile_name": "default",
         "project_name": "debe-postasi",
         "runtime": "python3.9",
+        "timeout_seconds": 900,
         "s3_bucket": "zappa-x01w7cnk0",
         "certificate_arn": "arn:aws:acm:us-east-1:821523470585:certificate/a66fb706-6774-420a-8b48-c731941c0292",
         "domain": "debe.cenkalti.com",

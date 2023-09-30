@@ -1,5 +1,6 @@
 import os
 import json
+import openai
 from datetime import datetime, timedelta
 
 import bmemcached
@@ -27,6 +28,8 @@ MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY")
 MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN")
 MAILGUN_MAILING_LIST = os.getenv("MAILGUN_MAILING_LIST")
 SECRET = os.getenv("SECRET")
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 mc = bmemcached.Client(
         os.environ.get('MEMCACHEDCLOUD_SERVERS', '').split(','),

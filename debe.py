@@ -7,14 +7,46 @@ import os
 from io import StringIO
 
 import openai
+import tiktoken
+from tiktoken.core import Encoding
+from tiktoken.load import load_tiktoken_bpe
 from requests import Session
 from requests.exceptions import RequestException
 import backoff
 from bs4 import BeautifulSoup
 
+ENDOFTEXT = "<|endoftext|>"
+FIM_PREFIX = "<|fim_prefix|>"
+FIM_MIDDLE = "<|fim_middle|>"
+FIM_SUFFIX = "<|fim_suffix|>"
+ENDOFPROMPT = "<|endofprompt|>"
+
+def cl100k_base():
+    mergeable_ranks = load_tiktoken_bpe(
+        "https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken"
+    )
+    special_tokens = {
+        ENDOFTEXT: 100257,
+        FIM_PREFIX: 100258,
+        FIM_MIDDLE: 100259,
+        FIM_SUFFIX: 100260,
+        ENDOFPROMPT: 100276,
+    }
+    return {
+        "name": "cl100k_base",
+        "pat_str": r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+""",
+        "mergeable_ranks": mergeable_ranks,
+        "special_tokens": special_tokens,
+    }
+
+
+encoding = Encoding(**cl100k_base())
+
 URL_BASE = "https://eksisozluk.com"
 PATH_DEBE = "/debe"
 RETRY_COUNT = 8
+GPT_MAX_TOKENS = 3900
+GPT_MODEL = 'gpt-3.5-turbo'
 
 headers = {
     'User-Agent': 'curl/7.43.0',
@@ -107,8 +139,9 @@ def get_content(title):
         author = entry_author.string
         author_href = entry_author['href']
         date = ul.find(class_="entry-date").string
-        topic = gpt_topic(str(content))
-        content = gpt_summarize(str(content))
+        content_for_gpt = limit_tokens(str(content))
+        topic = gpt_topic(content_for_gpt)
+        content = gpt_summarize(content_for_gpt)
         not_found = False
     else:
         raise ParseError
@@ -123,10 +156,20 @@ def get_content(title):
     }
 
 
+def num_tokens_from_string(string: str) -> int:
+    return len(encoding.encode(string))
+
+
+def limit_tokens(content: str) -> str:
+    while num_tokens_from_string(content) > GPT_MAX_TOKENS:
+        content = content[:int(len(content)/1.5)]
+    return content
+
+
 def gpt_topic(content: str) -> str:
     prompt = "User is going to provide a text in Turkish. Extract topic from given text as a single word in Turkish."
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model=GPT_MODEL,
         temperature=0,
         messages=[
             {"role": "system", "content": prompt},
@@ -137,13 +180,13 @@ def gpt_topic(content: str) -> str:
 
 
 def gpt_summarize(content: str) -> str:
-    words = len(content.split())
-    if words < 300:
+    words = content.split()
+    if len(words) < 300:
         return content
 
     prompt = "User is going to provide a text in Turkish. Summarize given text as 15 sentences in Turkish."
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model=GPT_MODEL,
         temperature=0,
         messages=[
             {"role": "system", "content": prompt},

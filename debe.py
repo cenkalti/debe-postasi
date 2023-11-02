@@ -7,19 +7,20 @@ import os
 from io import StringIO
 
 import openai
-import tiktoken
 from tiktoken.core import Encoding
 from tiktoken.load import load_tiktoken_bpe
 from requests import Session
 from requests.exceptions import RequestException
 import backoff
 from bs4 import BeautifulSoup
+from retry import retry
 
 ENDOFTEXT = "<|endoftext|>"
 FIM_PREFIX = "<|fim_prefix|>"
 FIM_MIDDLE = "<|fim_middle|>"
 FIM_SUFFIX = "<|fim_suffix|>"
 ENDOFPROMPT = "<|endofprompt|>"
+
 
 def cl100k_base():
     mergeable_ranks = load_tiktoken_bpe(
@@ -34,7 +35,7 @@ def cl100k_base():
     }
     return {
         "name": "cl100k_base",
-        "pat_str": r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+""",
+        "pat_str": r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+""",  # noqa: E501
         "mergeable_ranks": mergeable_ranks,
         "special_tokens": special_tokens,
     }
@@ -166,6 +167,7 @@ def limit_tokens(content: str) -> str:
     return content
 
 
+@retry(openai.APIError, tries=5)
 def gpt_topic(content: str) -> str:
     prompt = "User is going to provide a text in Turkish. Extract topic from given text as a single word in Turkish."
     response = openai.ChatCompletion.create(
@@ -179,6 +181,7 @@ def gpt_topic(content: str) -> str:
     return response['choices'][0]['message']['content']
 
 
+@retry(openai.APIError, tries=5)
 def gpt_summarize(content: str) -> str:
     words = content.split()
     if len(words) < 300:

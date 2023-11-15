@@ -1,14 +1,11 @@
 import os
 import json
-import openai
 from datetime import datetime, timedelta
 
 import bmemcached
 import requests
 import boto3
 from flask import Flask, request, abort
-
-import debe
 
 
 def populate_environ_from_ssm():
@@ -18,18 +15,19 @@ def populate_environ_from_ssm():
     client = boto3.client('ssm')
     response = client.get_parameters_by_path(Path=ssm_param_path, WithDecryption=True)
     for param in response['Parameters']:
+        print(f'Setting {param["Name"]} environment variable from SSM')
         env_name = os.path.basename(param['Name'])
         os.environ[env_name] = param['Value']
 
 
 populate_environ_from_ssm()
 
+import debe  # noqa: must be imported after OPENAI_API_KEY key is set from SSM
+
 MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY")
 MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN")
 MAILGUN_MAILING_LIST = os.getenv("MAILGUN_MAILING_LIST")
 SECRET = os.getenv("SECRET")
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 mc = bmemcached.Client(
         os.environ.get('MEMCACHEDCLOUD_SERVERS', '').split(','),

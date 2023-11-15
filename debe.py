@@ -11,7 +11,6 @@ from requests import Session
 from requests.exceptions import RequestException
 import backoff
 from bs4 import BeautifulSoup
-from retry import retry
 from tokenizer import num_tokens_from_string
 
 
@@ -138,7 +137,7 @@ def limit_tokens(content: str) -> str:
     return content
 
 
-@retry(openai.APIError, tries=5)
+@backoff.on_exception(backoff.constant, openai.APIError, max_tries=5)
 def gpt_topic(content: str) -> str:
     prompt = "User is going to provide a text in Turkish. Extract a single-word topic from given text in Turkish."
     response = client.chat.completions.create(
@@ -151,7 +150,7 @@ def gpt_topic(content: str) -> str:
     return response.choices[0].message.content
 
 
-@retry(openai.APIError, tries=5)
+@backoff.on_exception(backoff.constant, openai.APIError, max_tries=5)
 def gpt_summarize(content: str) -> str:
     words = content.split()
     if len(words) < 300:

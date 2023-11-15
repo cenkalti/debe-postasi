@@ -156,7 +156,7 @@ def gpt_summarize(content: str) -> str:
     if len(words) < 300:
         return content
 
-    prompt = "User is going to provide a text in Turkish. Summarize given text as 15 sentences in Turkish."
+    prompt = "User is going to provide a text in Turkish. Summarize given text in 10 sentences in Turkish."
     response = client.chat.completions.create(
             model=GPT_MODEL,
             temperature=0,

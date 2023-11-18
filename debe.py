@@ -17,8 +17,8 @@ from tokenizer import num_tokens_from_string
 URL_BASE = "https://eksisozluk.com"
 PATH_DEBE = "/debe"
 RETRY_COUNT = 8
-GPT_MAX_TOKENS = 127000
-GPT_MODEL = 'gpt-4-1106-preview'
+GPT_MAX_TOKENS = 15000
+GPT_MODEL = 'gpt-3.5-turbo'
 TOKEN_ENCODING = "cl100k_base"
 
 client = openai.OpenAI()
